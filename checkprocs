@@ -1,0 +1,169 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.010;
+use autodie;
+use Getopt::Long;
+use Pod::Usage;
+use Storable qw(freeze thaw);
+
+GetOptions(
+    "h|?|help"  => \my $help,
+    "l|print"   => \my $print,
+    "v|verbose" => \my $verbose,
+    "n|net"     => \my $net,
+) or pod2usage(1);
+pod2usage( -exitval => 0, -verbose => 2, -noperldoc => 1 ) if $help;
+
+run() unless caller();
+
+sub run {
+    die "You're not root, exiting ...\n" unless $< == 0;
+
+    # File for data persistence
+    my $file = do {
+        if   ($net) { 'checkprocs_net.data' }
+        else        { 'checkprocs.data' }
+    };
+
+    my $procs = do {
+        if   ($net) { get_net_procs() }
+        else        { get_procs() }
+    };
+
+    my $what = $net ? 'netstat' : 'ps';
+
+    if ($print) {
+        say "Current $what processes:";
+        say for map { "  $_" } @$procs;
+    } else {
+        my $frozen = freeze($procs);
+
+        if ( -e $file ) {    # second or later run
+            my $contents = do { local ( @ARGV, $/ ) = $file; <> };
+            my $old_procs = thaw($contents);
+
+            my @missing_procs =
+              missing_procs( $old_procs, $procs, { verbose => $verbose } );
+            if (@missing_procs) {
+                say "Missing $what processes:";
+                say for map { "  $_" } @missing_procs;
+            } else {
+                say "No missing $what processes" if $verbose;
+            }
+        } else {             # first run; store running processes
+            open my $fh, '>', $file;
+            print $fh $frozen;
+            close $fh;
+            say "Stored running $what procs to $file" if $verbose;
+        }
+    }
+}
+
+# Find missing old proceses
+sub missing_procs {
+    my $old  = shift;        # aref
+    my $new  = shift;        # aref
+    my $opts = shift;        # href
+
+    # remove command line arguments
+    my @old_no_args = map { my $s = $_; $s =~ s/\s.*$//; $s } @$old;
+    my @new_no_args = map { my $s = $_; $s =~ s/\s.*$//; $s } @$new;
+
+    my @missing;
+  OUTER:
+    for my $old_i ( 0 .. $#old_no_args ) {
+        for my $new_i ( 0 .. $#new_no_args ) {
+
+            ### Comparing ...
+            ### old: $old->[$old_i]
+            ### new: $new->[$new_i]
+
+            next OUTER if $new_no_args[$new_i] eq $old_no_args[$old_i];
+        }
+        if ( $opts->{verbose} ) {
+            push @missing, $old->[$old_i];
+        } else {
+            push @missing, $old_no_args[$old_i];
+        }
+    }
+
+    return @missing;
+}
+
+sub get_procs {
+    my %procs;
+    my $boring =
+      qr/\b(bash|su|screen|vim?|ps|sudo|systemd|a?getty|init|dbus|acpid|udevd|sshd:)\b/i;
+
+    open my $ps, '-|', 'ps aux';
+    while (<$ps>) {
+        chomp;
+        next if /^USER/;    # skip header
+        my ($proc) = ( split( ' ', $_, 11 ) )[10];
+
+        # skip non-interesting processes
+        next if $proc =~ /^\[/;     # kernel stuff
+        next if $proc =~ /$0/;      # myself
+        next if $proc =~ $boring;
+
+        $procs{$proc}++;
+    }
+    close $ps;
+
+    my @procs = sort keys %procs;
+    return \@procs;
+}
+
+sub get_net_procs {
+    my %procs;
+    open my $netstat, '-|', 'netstat -tlpn';
+    while (<$netstat>) {
+        next if /^(Active|Proto)/;    # skip headers
+        my $proc = ( split '/', (split)[6] )[1];
+        $procs{$proc}++ if defined $proc;
+    }
+    close $netstat;
+
+    my @procs = sort keys %procs;
+    return \@procs;
+}
+
+__END__
+
+=head1 NAME
+
+checkprocs - check whether we have the same processes running before and after
+an upgrade
+
+=head1 SYNOPSIS
+
+checkprocs [options]
+
+  Options:
+    -h, -?, --help  help message
+    -n, --net       network processes (netstat) instead of all processes (ps)
+    -v, --verbose   be verbose; show command line arguments of ps processes
+    -l, --print     just print currently running processes
+
+=head1 DESCRIPTION
+
+Run this before an upgrade and then after the upgrade. You will be notified if
+some processes are not running anymore. Data about running ps and netstat
+processes is stored in checkprocs.data and checkprocs_net.data respectively.
+
+=head1 EXAMPLE
+
+To test checkprocs (ex. when you are a developer adding new features):
+
+  [perlbrew exec] prove checkprocs.t
+
+You should get notified that exim4 is not running anymore (provided exim4 was
+running before :-):
+
+  rm checkprocs.data        # to be sure this is a new run
+  sudo ./checkprocs -v
+  sudo systemctl stop exim4
+  sudo ./checkprocs -v
+
+=cut
