@@ -154,10 +154,6 @@ processes is stored in checkprocs.data and checkprocs_net.data respectively.
 
 =head1 EXAMPLE
 
-To test checkprocs (ex. when you are a developer adding new features):
-
-  [perlbrew exec] prove checkprocs.t
-
 You should get notified that exim4 is not running anymore (provided exim4 was
 running before :-):
 
