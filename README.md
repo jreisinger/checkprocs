@@ -12,7 +12,7 @@ processes running before and after an upgrade.
 Running
 -------
 
-Just download the script and run it, like:
+Just download the script and run it. Something like:
 
     wget https://raw.githubusercontent.com/jreisinger/checkprocs/master/checkprocs && chmod u+x checkprocs
     ./checkprocs -h
