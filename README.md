@@ -1,4 +1,8 @@
-[![Build Status](https://travis-ci.org/jreisinger/checkprocs.svg?branch=master)](https://travis-ci.org/jreisinger/checkprocs)
+About
+-----
+
+A little tool to help you with a Linux distribution upgrade (like `apt-get
+dist-upgrade`).
 
 Running
 -------
@@ -11,6 +15,8 @@ processes running before and after an upgrade. Just download it and run it:
 
 Testing
 -------
+
+[![Build Status](https://travis-ci.org/jreisinger/checkprocs.svg?branch=master)](https://travis-ci.org/jreisinger/checkprocs)
 
 `checkprocs.t` - tests to verify the checkprocs script. To test checkprocs (ex.
 when you are a developer adding new features) manually:
