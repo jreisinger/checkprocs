@@ -32,4 +32,4 @@ More
 
 For more (about modulinos) see [Testing a Perl
 Script](https://github.com/jreisinger/blog/blob/master/posts/testing-perl-script.md)
-post.
+post. Also Oliver's [redis_memtop](https://github.com/okxchg/redis_memtop) looks interesting.
