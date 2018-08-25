@@ -33,3 +33,5 @@ More
 For more (about modulinos) see [Testing a Perl
 Script](https://github.com/jreisinger/blog/blob/master/posts/testing-perl-script.md)
 post. Also Oliver's [redis_memtop](https://github.com/okxchg/redis_memtop) looks interesting.
+
+I wrote this tool while upgrading my [$employer](https://www.eset.com/)'s servers.
